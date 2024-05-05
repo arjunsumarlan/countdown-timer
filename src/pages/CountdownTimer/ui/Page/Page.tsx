@@ -12,6 +12,7 @@ const CountdownTimer: React.FC = () => {
   const [timers, setTimers] = useState<Timer[]>([]);
   const [currentTimer, setCurrentTimer] = useState<string>("00:00");
   const [activeTimerId, setActiveTimerId] = useState<number | null>(null);
+  const [countActivate, setCountActivate] = useState<number>(0);
   const [timeoutId, setTimeoutId] = useState<ReturnType<
     typeof setTimeout
   > | null>(null);
@@ -27,6 +28,21 @@ const CountdownTimer: React.FC = () => {
     }
   }, [timers, activeTimerId]);
 
+  useEffect(() => {
+    if (
+      countActivate < 0
+    ) {
+      setCountActivate(0); // reset state of count activate
+      // remove timer that already done and continue to next timer
+      const remainingTimers = timers.filter((timer) => timer.id !== activeTimerId);
+      setTimers(remainingTimers);
+      if (remainingTimers.length > 0) {
+        const nextTimer = remainingTimers[0];
+        setActiveTimerId(nextTimer.id);
+      }
+    }
+  }, [countActivate, activeTimerId]);
+
   const clearActiveTimer = () => {
     if (timeoutId) {
       clearTimeout(timeoutId);
@@ -38,9 +54,11 @@ const CountdownTimer: React.FC = () => {
 
   const startNextTimer = () => {
     if (timers.length === 0) return;
+    if (countActivate > 1) return; // Prevents reset current/active countdown timer due to react state & closure issue
     clearActiveTimer(); // Clear any existing active timer
     const nextTimer = timers[0];
     setActiveTimerId(nextTimer.id);
+    setCountActivate(prevState => prevState + 1);
     countdown(nextTimer.minutes * 60 + nextTimer.seconds, nextTimer.id);
   };
 
@@ -57,12 +75,7 @@ const CountdownTimer: React.FC = () => {
         setTimeoutId(newTimeoutId);
         seconds--;
       } else {
-        const remainingTimers = timers.filter((timer) => timer.id !== id);
-        setTimers(remainingTimers);
-        if (remainingTimers.length > 0) {
-          const nextTimer = remainingTimers[0];
-          setActiveTimerId(nextTimer.id);
-        }
+        setCountActivate(-1); // Trigger countdown to next timer after current already finished
       }
     };
     tick();
